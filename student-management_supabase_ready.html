@@ -1,0 +1,1526 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบจัดการนักเรียน - EduTrack</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=Chakra+Petch:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+  const supabaseUrl = "https://aucjbfynqxkypqhwdjze.supabase.co";
+  const supabaseKey = "sb_publishable_y1rB5z8qOnp0mS3iQ6zeUw_wVXeilhP";
+  const sb = window.supabase.createClient(supabaseUrl, supabaseKey);
+</script>
+<style>
+:root {
+  --primary: #1a5f3f;
+  --primary-light: #2d8a5e;
+  --primary-dark: #0f3d28;
+  --accent: #f0a500;
+  --accent-light: #ffd166;
+  --danger: #e63946;
+  --info: #457b9d;
+  --bg: #f0f4f0;
+  --card: #ffffff;
+  --text: #1a2e1a;
+  --text-muted: #6b7e6b;
+  --border: #d4e4d4;
+  --sidebar-w: 260px;
+  --shadow: 0 4px 24px rgba(26,95,63,0.10);
+  --radius: 14px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Sarabun', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* ---- AUTH ---- */
+#auth-screen {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0f3d28 0%, #1a5f3f 50%, #2d8a5e 100%);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.auth-box {
+  background: white; border-radius: 24px; padding: 44px 40px;
+  width: 100%; max-width: 420px;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.25);
+  animation: slideUp .5s ease;
+}
+@keyframes slideUp { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
+.auth-logo { text-align:center; margin-bottom:28px; }
+.auth-logo .logo-icon {
+  width:64px; height:64px; background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  border-radius:18px; display:inline-flex; align-items:center; justify-content:center;
+  font-size:28px; margin-bottom:12px; box-shadow: 0 8px 24px rgba(26,95,63,0.3);
+}
+.auth-logo h1 { font-family: 'Chakra Petch', sans-serif; font-size:24px; color: var(--primary); font-weight:700; }
+.auth-logo p { color: var(--text-muted); font-size:14px; margin-top:4px; }
+.auth-tabs { display:flex; gap:4px; background:#f0f4f0; border-radius:10px; padding:4px; margin-bottom:28px; }
+.auth-tab {
+  flex:1; padding:9px; text-align:center; border-radius:7px; cursor:pointer;
+  font-weight:600; font-size:14px; transition:.2s; color: var(--text-muted);
+}
+.auth-tab.active { background:white; color: var(--primary); box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+.form-group { margin-bottom:18px; }
+.form-group label { display:block; font-weight:600; font-size:14px; margin-bottom:7px; color: var(--text); }
+.form-group input, .form-group select {
+  width:100%; padding:12px 14px; border:2px solid var(--border); border-radius:10px;
+  font-family:'Sarabun',sans-serif; font-size:15px; transition:.2s; color: var(--text);
+}
+.form-group input:focus, .form-group select:focus { outline:none; border-color: var(--primary-light); box-shadow:0 0 0 3px rgba(26,95,63,0.1); }
+.btn-primary {
+  width:100%; padding:13px; background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color:white; border:none; border-radius:10px; font-family:'Sarabun',sans-serif;
+  font-size:16px; font-weight:700; cursor:pointer; transition:.2s;
+  box-shadow: 0 4px 16px rgba(26,95,63,0.3);
+}
+.btn-primary:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(26,95,63,0.4); }
+.auth-msg { text-align:center; margin-top:14px; font-size:13px; color: var(--text-muted); }
+
+/* ---- LAYOUT ---- */
+#app { display:none; min-height:100vh; }
+.sidebar {
+  position:fixed; top:0; left:0; width: var(--sidebar-w); height:100vh;
+  background: linear-gradient(180deg, #0f3d28 0%, #1a5f3f 100%);
+  display:flex; flex-direction:column; z-index:100;
+  box-shadow: 4px 0 24px rgba(0,0,0,0.15);
+}
+.sidebar-header {
+  padding:24px 20px 20px;
+  border-bottom:1px solid rgba(255,255,255,0.1);
+}
+.sidebar-logo { display:flex; align-items:center; gap:12px; }
+.sidebar-logo .logo-box {
+  width:44px; height:44px; background: linear-gradient(135deg, var(--accent), #e09000);
+  border-radius:12px; display:flex; align-items:center; justify-content:center;
+  font-size:20px; flex-shrink:0;
+}
+.sidebar-logo span { font-family:'Chakra Petch',sans-serif; font-size:18px; color:white; font-weight:700; }
+.teacher-info {
+  margin-top:16px; padding:12px; background:rgba(255,255,255,0.08);
+  border-radius:10px; display:flex; align-items:center; gap:10px;
+}
+.teacher-avatar {
+  width:36px; height:36px; background: var(--accent); border-radius:50%;
+  display:flex; align-items:center; justify-content:center; font-weight:700;
+  font-size:15px; color:var(--primary-dark); flex-shrink:0;
+}
+.teacher-details { flex:1; min-width:0; }
+.teacher-details .name { color:white; font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.teacher-details .sub { color:rgba(255,255,255,0.6); font-size:11px; }
+.sidebar-nav { flex:1; padding:16px 12px; overflow-y:auto; }
+.nav-section-label { color:rgba(255,255,255,0.4); font-size:11px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; padding:0 8px; margin:12px 0 6px; }
+.nav-item {
+  display:flex; align-items:center; gap:12px; padding:11px 12px;
+  border-radius:10px; cursor:pointer; transition:.2s; color:rgba(255,255,255,0.7);
+  font-weight:500; font-size:14px; margin-bottom:2px;
+}
+.nav-item:hover { background:rgba(255,255,255,0.1); color:white; }
+.nav-item.active { background: linear-gradient(135deg, var(--accent), #e09000); color:var(--primary-dark); font-weight:700; box-shadow:0 4px 12px rgba(240,165,0,0.4); }
+.nav-item .nav-icon { font-size:17px; width:22px; text-align:center; flex-shrink:0; }
+.sidebar-footer { padding:16px; border-top:1px solid rgba(255,255,255,0.1); }
+.btn-logout {
+  width:100%; padding:10px; background:rgba(230,57,70,0.15); border:1px solid rgba(230,57,70,0.3);
+  color:#ff8a92; border-radius:9px; cursor:pointer; font-family:'Sarabun',sans-serif;
+  font-size:14px; font-weight:600; transition:.2s; display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.btn-logout:hover { background:rgba(230,57,70,0.3); color:#ffb3b8; }
+.main-content { margin-left: var(--sidebar-w); min-height:100vh; padding:28px; }
+
+/* ---- TOPBAR ---- */
+.topbar {
+  display:flex; align-items:center; justify-content:space-between; margin-bottom:28px;
+}
+.page-title { font-family:'Chakra Petch',sans-serif; font-size:22px; font-weight:700; color: var(--primary-dark); }
+.page-sub { color: var(--text-muted); font-size:14px; margin-top:3px; }
+.topbar-right { display:flex; align-items:center; gap:12px; }
+.badge-notify {
+  background:var(--danger); color:white; border-radius:50%; width:22px; height:22px;
+  display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700;
+}
+
+/* ---- CARDS / STATS ---- */
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:28px; }
+.stat-card {
+  background:white; border-radius: var(--radius); padding:22px; box-shadow: var(--shadow);
+  display:flex; align-items:center; gap:16px; transition:.2s; cursor:default;
+  border:2px solid transparent;
+}
+.stat-card:hover { transform:translateY(-2px); border-color: var(--border); }
+.stat-icon {
+  width:52px; height:52px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0;
+}
+.stat-card.green .stat-icon { background:#e8f5ee; }
+.stat-card.amber .stat-icon { background:#fff8e6; }
+.stat-card.blue .stat-icon { background:#e8f0f8; }
+.stat-card.red .stat-icon { background:#fce8ea; }
+.stat-value { font-family:'Chakra Petch',sans-serif; font-size:28px; font-weight:700; color: var(--text); }
+.stat-label { font-size:13px; color: var(--text-muted); margin-top:2px; }
+
+/* ---- TABLE ---- */
+.card { background:white; border-radius: var(--radius); box-shadow: var(--shadow); overflow:hidden; }
+.card-header { padding:20px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.card-title { font-weight:700; font-size:16px; display:flex; align-items:center; gap:8px; }
+.card-actions { display:flex; gap:8px; flex-wrap:wrap; }
+.btn {
+  padding:9px 16px; border-radius:9px; font-family:'Sarabun',sans-serif; font-size:13px;
+  font-weight:600; cursor:pointer; border:none; transition:.2s; display:inline-flex; align-items:center; gap:6px;
+}
+.btn-green { background: linear-gradient(135deg, var(--primary), var(--primary-light)); color:white; box-shadow:0 3px 10px rgba(26,95,63,0.25); }
+.btn-green:hover { transform:translateY(-1px); box-shadow:0 5px 14px rgba(26,95,63,0.35); }
+.btn-amber { background: linear-gradient(135deg, var(--accent), #e09000); color: var(--primary-dark); box-shadow:0 3px 10px rgba(240,165,0,0.25); }
+.btn-amber:hover { transform:translateY(-1px); }
+.btn-outline { background:white; border:2px solid var(--border); color: var(--text); }
+.btn-outline:hover { border-color: var(--primary-light); color: var(--primary); }
+.btn-sm { padding:6px 12px; font-size:12px; }
+.btn-danger { background:#fce8ea; color: var(--danger); border:none; }
+.btn-danger:hover { background: var(--danger); color:white; }
+.search-bar {
+  display:flex; align-items:center; gap:8px; background: var(--bg); border:2px solid var(--border);
+  border-radius:9px; padding:0 12px; flex:1; min-width:200px;
+}
+.search-bar input { border:none; background:none; padding:9px 0; font-family:'Sarabun',sans-serif; font-size:14px; color: var(--text); outline:none; flex:1; }
+table { width:100%; border-collapse:collapse; }
+thead th { padding:12px 16px; background:#f7faf7; font-size:12px; font-weight:700; color: var(--text-muted); text-transform:uppercase; letter-spacing:.5px; text-align:left; border-bottom:2px solid var(--border); }
+tbody tr { transition:.15s; border-bottom:1px solid #f0f4f0; }
+tbody tr:hover { background:#f7faf7; }
+tbody td { padding:13px 16px; font-size:14px; }
+.badge { padding:3px 10px; border-radius:20px; font-size:12px; font-weight:600; display:inline-block; }
+.badge-green { background:#e8f5ee; color: var(--primary); }
+.badge-amber { background:#fff8e6; color:#b07a00; }
+.badge-red { background:#fce8ea; color: var(--danger); }
+.badge-blue { background:#e8f0f8; color: var(--info); }
+.score-bar { display:flex; align-items:center; gap:8px; }
+.score-track { flex:1; height:6px; background:#e8f0e8; border-radius:3px; }
+.score-fill { height:100%; border-radius:3px; transition:.4s; }
+.score-fill.good { background: linear-gradient(90deg, var(--primary-light), var(--accent)); }
+.score-fill.ok { background: linear-gradient(90deg, var(--accent), #e09000); }
+.score-fill.low { background: linear-gradient(90deg, #e09000, var(--danger)); }
+.avatar-cell { display:flex; align-items:center; gap:10px; }
+.mini-avatar { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12px; flex-shrink:0; }
+
+/* ---- MODAL ---- */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; display:none; align-items:center; justify-content:center; padding:20px;
+  backdrop-filter: blur(4px);
+}
+.modal-overlay.open { display:flex; animation: fadeIn .2s ease; }
+@keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+.modal {
+  background:white; border-radius:20px; width:100%; max-width:620px; max-height:90vh; overflow-y:auto;
+  box-shadow:0 30px 80px rgba(0,0,0,0.3); animation: slideUp .3s ease;
+}
+.modal-header { padding:24px 28px 16px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); position:sticky; top:0; background:white; z-index:1; }
+.modal-header h3 { font-weight:700; font-size:18px; color: var(--text); }
+.btn-close { width:32px; height:32px; background:#f0f4f0; border:none; border-radius:8px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; transition:.15s; }
+.btn-close:hover { background:#e0e8e0; }
+.modal-body { padding:24px 28px; }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.form-section { margin-bottom:20px; }
+.form-section h4 { font-size:13px; font-weight:700; color: var(--primary); text-transform:uppercase; letter-spacing:.8px; margin-bottom:12px; padding-bottom:6px; border-bottom:2px solid var(--border); }
+.score-inputs { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.score-item label { font-size:13px; font-weight:600; color: var(--text-muted); display:block; margin-bottom:5px; }
+.score-item input { width:100%; padding:9px 12px; border:2px solid var(--border); border-radius:8px; font-family:'Sarabun',sans-serif; font-size:14px; }
+.score-item input:focus { outline:none; border-color: var(--primary-light); }
+.modal-footer { padding:16px 28px 24px; display:flex; gap:10px; justify-content:flex-end; }
+
+/* ---- PAGES ---- */
+.page { display:none; }
+.page.active { display:block; animation: pageIn .3s ease; }
+@keyframes pageIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+/* ALERT */
+.alert {
+  position:fixed; top:20px; right:20px; padding:14px 20px; border-radius:12px; font-weight:600; font-size:14px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.15); z-index:999; animation: alertIn .3s ease;
+  display:flex; align-items:center; gap:10px; min-width:280px;
+}
+@keyframes alertIn { from { opacity:0; transform:translateX(30px); } to { opacity:1; transform:translateX(0); } }
+.alert.success { background: #e8f5ee; color: var(--primary-dark); border-left:4px solid var(--primary); }
+.alert.error { background: #fce8ea; color: #8b0000; border-left:4px solid var(--danger); }
+.alert.info { background: #e8f0f8; color: #1a3a5c; border-left:4px solid var(--info); }
+
+/* ACTIVITY LOG */
+.activity-list { display:flex; flex-direction:column; gap:0; }
+.activity-item { display:flex; gap:14px; padding:14px 0; border-bottom:1px solid #f0f4f0; align-items:flex-start; }
+.activity-item:last-child { border-bottom:none; }
+.activity-dot { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+.activity-content .title { font-weight:600; font-size:14px; color: var(--text); }
+.activity-content .sub { font-size:12px; color: var(--text-muted); margin-top:2px; }
+
+/* FILTER BAR */
+.filter-bar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; align-items:center; }
+.filter-select { padding:8px 12px; border:2px solid var(--border); border-radius:9px; font-family:'Sarabun',sans-serif; font-size:13px; color: var(--text); background:white; cursor:pointer; }
+.filter-select:focus { outline:none; border-color: var(--primary-light); }
+
+/* IMPORT BOX */
+.import-area {
+  border:2px dashed var(--border); border-radius:14px; padding:32px; text-align:center;
+  cursor:pointer; transition:.2s; background:#f7faf7;
+}
+.import-area:hover { border-color: var(--primary-light); background:#eef5ee; }
+.import-area .import-icon { font-size:40px; margin-bottom:12px; }
+.import-area p { color: var(--text-muted); font-size:14px; }
+.import-area strong { color: var(--primary); }
+
+/* PENDING WORK BADGE */
+.pending-count { background: var(--danger); color:white; border-radius:20px; padding:2px 8px; font-size:11px; font-weight:700; margin-left:6px; }
+
+/* Dashboard chart placeholder */
+.chart-container { background:#f7faf7; border-radius:12px; padding:20px; min-height:180px; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:8px; }
+.mini-chart { display:flex; align-items:flex-end; gap:6px; height:100px; }
+.mini-bar { border-radius:4px 4px 0 0; min-width:24px; transition:.4s; }
+
+/* ---- RESPONSIVE ---- */
+@media(max-width:768px) {
+  :root { --sidebar-w:0px; }
+  .sidebar { transform:translateX(-260px); width:260px; transition:.3s; }
+  .sidebar.open { transform:translateX(0); --sidebar-w:260px; }
+  .main-content { margin-left:0; padding:16px; }
+  .form-row { grid-template-columns:1fr; }
+  .score-inputs { grid-template-columns:1fr; }
+}
+.table-wrap { overflow-x:auto; }
+.empty-state { text-align:center; padding:60px 20px; color: var(--text-muted); }
+.empty-state .empty-icon { font-size:48px; margin-bottom:14px; }
+.empty-state p { font-size:15px; }
+</style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="logo-icon">🎓</div>
+      <h1>EduTrack</h1>
+      <p>ระบบจัดการนักเรียนสำหรับครูที่ปรึกษา</p>
+    </div>
+    <div class="auth-tabs">
+      <div class="auth-tab active" onclick="switchTab('login')">เข้าสู่ระบบ</div>
+      <div class="auth-tab" onclick="switchTab('register')">สมัครสมาชิก</div>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="tab-login">
+      <div class="form-group">
+        <label>อีเมล</label>
+        <input type="email" id="login-email" placeholder="teacher@school.ac.th" />
+      </div>
+      <div class="form-group">
+        <label>รหัสผ่าน</label>
+        <input type="password" id="login-pass" placeholder="••••••••" />
+      </div>
+      <button class="btn-primary" onclick="doLogin()">เข้าสู่ระบบ</button>
+      <p class="auth-msg">สมัครสมาชิกใหม่เพื่อเริ่มใช้งานระบบ</p>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="tab-register" style="display:none">
+      <div class="form-row">
+        <div class="form-group">
+          <label>ชื่อ</label>
+          <input type="text" id="reg-fname" placeholder="สมชาย" />
+        </div>
+        <div class="form-group">
+          <label>นามสกุล</label>
+          <input type="text" id="reg-lname" placeholder="ใจดี" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>อีเมล</label>
+        <input type="email" id="reg-email" placeholder="teacher@school.ac.th" />
+      </div>
+      <div class="form-group">
+        <label>ตำบล/พื้นที่รับผิดชอบ</label>
+        <input type="text" id="reg-area" placeholder="เช่น ตำบลบ้านสวน" />
+      </div>
+      <div class="form-group">
+        <label>รหัสผ่าน</label>
+        <input type="password" id="reg-pass" placeholder="อย่างน้อย 4 ตัวอักษร" />
+      </div>
+      <button class="btn-primary" onclick="doRegister()">สมัครสมาชิก</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <div class="logo-box">🎓</div>
+        <span>EduTrack</span>
+      </div>
+      <div class="teacher-info" id="teacher-info-box">
+        <div class="teacher-avatar" id="teacher-avatar-txt">ค</div>
+        <div class="teacher-details">
+          <div class="name" id="teacher-name-display">ครูสมชาย</div>
+          <div class="sub" id="teacher-area-display">ตำบลบ้านสวน</div>
+        </div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">หลัก</div>
+      <div class="nav-item active" onclick="showPage('dashboard')"><span class="nav-icon">📊</span> แดชบอร์ด</div>
+      <div class="nav-item" onclick="showPage('students')"><span class="nav-icon">👨‍🎓</span> ข้อมูลนักเรียน</div>
+      <div class="nav-section-label">การจัดการ</div>
+      <div class="nav-item" onclick="showPage('scores')"><span class="nav-icon">⭐</span> คะแนนและกิจกรรม</div>
+      <div class="nav-item" onclick="showPage('pending')"><span class="nav-icon">📋</span> งานค้างส่ง <span class="pending-count" id="pending-count-badge">0</span></div>
+      <div class="nav-item" onclick="showPage('import')"><span class="nav-icon">📂</span> นำเข้าข้อมูล Excel</div>
+      <div class="nav-section-label">ข้อมูล</div>
+      <div class="nav-item" onclick="showPage('activity')"><span class="nav-icon">📝</span> บันทึกกิจกรรม</div>
+      <div class="nav-item" onclick="showPage('report')"><span class="nav-icon">📄</span> รายงาน</div>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn-logout" onclick="doLogout()">🚪 ออกจากระบบ</button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main-content">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="topbar">
+        <div>
+          <div class="page-title">แดชบอร์ด</div>
+          <div class="page-sub" id="dash-welcome">ยินดีต้อนรับ, ครูสมชาย 👋</div>
+        </div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card green">
+          <div class="stat-icon">👨‍🎓</div>
+          <div><div class="stat-value" id="stat-total">0</div><div class="stat-label">นักเรียนทั้งหมด</div></div>
+        </div>
+        <div class="stat-card amber">
+          <div class="stat-icon">⭐</div>
+          <div><div class="stat-value" id="stat-volunteer">0</div><div class="stat-label">คะแนนจิตอาสา (เฉลี่ย)</div></div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-icon">📚</div>
+          <div><div class="stat-value" id="stat-credit">0</div><div class="stat-label">หน่วยกิต (เฉลี่ย)</div></div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-icon">⚠️</div>
+          <div><div class="stat-value" id="stat-pending">0</div><div class="stat-label">งานค้างส่ง</div></div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;flex-wrap:wrap;">
+        <div class="card">
+          <div class="card-header"><div class="card-title">📈 นักเรียนตามชั้น</div></div>
+          <div style="padding:20px;" id="grade-chart-area">
+            <div class="chart-container"><p style="color:var(--text-muted)">ยังไม่มีข้อมูล</p></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">🔔 แจ้งเตือน</div></div>
+          <div style="padding:16px;" id="alert-list">
+            <div class="empty-state"><div class="empty-icon">✅</div><p>ไม่มีการแจ้งเตือน</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STUDENTS PAGE -->
+    <div class="page" id="page-students">
+      <div class="topbar">
+        <div>
+          <div class="page-title">ข้อมูลนักเรียน</div>
+          <div class="page-sub" id="students-count-txt">ทั้งหมด 0 คน</div>
+        </div>
+        <div class="topbar-right">
+          <button class="btn btn-green" onclick="openAddModal()">➕ เพิ่มนักเรียน</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="search-bar">
+            <span>🔍</span>
+            <input placeholder="ค้นหาชื่อ, นามสกุล, ที่อยู่..." id="search-input" oninput="renderStudents()">
+          </div>
+          <div class="card-actions">
+            <select class="filter-select" id="filter-grade" onchange="renderStudents()">
+              <option value="">ทุกชั้น</option>
+              <option>ม.1</option><option>ม.2</option><option>ม.3</option>
+              <option>ม.4</option><option>ม.5</option><option>ม.6</option>
+              <option>ป.1</option><option>ป.2</option><option>ป.3</option>
+              <option>ป.4</option><option>ป.5</option><option>ป.6</option>
+            </select>
+            <button class="btn btn-outline" onclick="exportExcel()">📥 Export Excel</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>#</th><th>ชื่อ-นามสกุล</th><th>ชั้น</th><th>อายุ</th>
+              <th>จิตอาสา</th><th>หน่วยกิต</th><th>งานค้าง</th><th>สถานะ</th><th>จัดการ</th>
+            </tr></thead>
+            <tbody id="students-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCORES PAGE -->
+    <div class="page" id="page-scores">
+      <div class="topbar">
+        <div><div class="page-title">คะแนนและกิจกรรม</div><div class="page-sub">ภาพรวมคะแนนจิตอาสาและหน่วยกิต</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">📊 ตารางคะแนน</div>
+          <select class="filter-select" id="score-sort" onchange="renderScorePage()">
+            <option value="volunteer">เรียงตามจิตอาสา</option>
+            <option value="credit">เรียงตามหน่วยกิต</option>
+            <option value="pending">เรียงตามงานค้าง</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>#</th><th>ชื่อ-นามสกุล</th><th>ชั้น</th>
+              <th>จิตอาสา</th><th>หน่วยกิต</th><th>งานค้าง</th><th>แก้ไข</th>
+            </tr></thead>
+            <tbody id="scores-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PENDING PAGE -->
+    <div class="page" id="page-pending">
+      <div class="topbar">
+        <div><div class="page-title">งานค้างส่ง</div><div class="page-sub">รายชื่อนักเรียนที่มีงานยังไม่ส่ง</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">⚠️ รายการงานค้าง</div></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>ชื่อ-นามสกุล</th><th>ชั้น</th><th>งานค้าง (ชิ้น)</th><th>ต้องการการติดตาม</th></tr></thead>
+            <tbody id="pending-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- IMPORT PAGE -->
+    <div class="page" id="page-import">
+      <div class="topbar">
+        <div><div class="page-title">นำเข้าข้อมูล Excel</div><div class="page-sub">อัพโหลดไฟล์ .xlsx หรือ .csv</div></div>
+      </div>
+      <div class="card" style="padding:28px;">
+        <div class="import-area" onclick="document.getElementById('excel-file').click()">
+          <div class="import-icon">📊</div>
+          <p><strong>คลิกเพื่อเลือกไฟล์</strong> หรือลากวางไฟล์ที่นี่</p>
+          <p style="margin-top:6px;font-size:12px;">รองรับ .xlsx, .xls, .csv</p>
+          <input type="file" id="excel-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleExcelImport(event)">
+        </div>
+        <div style="margin-top:24px;">
+          <div class="card-title" style="margin-bottom:12px;">📋 รูปแบบที่รองรับ (หัว Column)</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <span class="badge badge-green">ชื่อ</span>
+            <span class="badge badge-green">นามสกุล</span>
+            <span class="badge badge-blue">ที่อยู่</span>
+            <span class="badge badge-blue">ชั้น</span>
+            <span class="badge badge-blue">อายุ</span>
+            <span class="badge badge-amber">จิตอาสา</span>
+            <span class="badge badge-amber">หน่วยกิต</span>
+            <span class="badge badge-red">งานค้าง</span>
+          </div>
+        </div>
+        <div id="import-preview" style="display:none;margin-top:20px;">
+          <div class="card-title" style="margin-bottom:12px;">ตัวอย่างข้อมูลที่จะนำเข้า</div>
+          <div id="import-preview-content"></div>
+          <div style="margin-top:16px;display:flex;gap:10px;">
+            <button class="btn btn-green" onclick="confirmImport()">✅ ยืนยันนำเข้า</button>
+            <button class="btn btn-outline" onclick="cancelImport()">❌ ยกเลิก</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACTIVITY PAGE -->
+    <div class="page" id="page-activity">
+      <div class="topbar">
+        <div><div class="page-title">บันทึกกิจกรรม</div><div class="page-sub">ประวัติการดำเนินงานในระบบ</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">📝 ประวัติการดำเนินงาน</div>
+          <button class="btn btn-outline btn-sm" onclick="clearActivityLog()">🗑️ ล้างประวัติ</button>
+        </div>
+        <div style="padding:0 8px;" id="activity-container">
+          <div class="empty-state"><div class="empty-icon">📂</div><p>ยังไม่มีประวัติการดำเนินงาน</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REPORT PAGE -->
+    <div class="page" id="page-report">
+      <div class="topbar">
+        <div><div class="page-title">รายงาน</div><div class="page-sub">สรุปข้อมูลทั้งหมด</div></div>
+        <button class="btn btn-green" onclick="exportReport()">📥 Export รายงาน Excel</button>
+      </div>
+      <div class="stats-grid" id="report-stats"></div>
+      <div class="card" style="margin-top:20px;">
+        <div class="card-header"><div class="card-title">📋 สรุปรายชั้น</div></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ชั้น</th><th>จำนวนนักเรียน</th><th>จิตอาสา (เฉลี่ย)</th><th>หน่วยกิต (เฉลี่ย)</th><th>งานค้างรวม</th></tr></thead>
+            <tbody id="report-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end main-content -->
+</div><!-- end app -->
+
+<!-- MODAL ADD/EDIT STUDENT -->
+<div class="modal-overlay" id="student-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-title">➕ เพิ่มนักเรียนใหม่</h3>
+      <button class="btn-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-index" value="-1">
+      <div class="form-section">
+        <h4>ข้อมูลส่วนตัว</h4>
+        <div class="form-row">
+          <div class="form-group"><label>ชื่อ *</label><input id="s-fname" placeholder="สมชาย" /></div>
+          <div class="form-group"><label>นามสกุล *</label><input id="s-lname" placeholder="ใจดี" /></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>ชั้นเรียน *</label>
+            <select id="s-grade">
+              <option value="">เลือกชั้น</option>
+              <option>ป.1</option><option>ป.2</option><option>ป.3</option>
+              <option>ป.4</option><option>ป.5</option><option>ป.6</option>
+              <option>ม.1</option><option>ม.2</option><option>ม.3</option>
+              <option>ม.4</option><option>ม.5</option><option>ม.6</option>
+            </select>
+          </div>
+          <div class="form-group"><label>อายุ</label><input id="s-age" type="number" min="6" max="20" placeholder="13" /></div>
+        </div>
+        <div class="form-group"><label>ที่อยู่</label><input id="s-address" placeholder="บ้านเลขที่ / หมู่บ้าน / ตำบล" /></div>
+        <div class="form-row">
+          <div class="form-group"><label>เบอร์โทรผู้ปกครอง</label><input id="s-phone" placeholder="08x-xxx-xxxx" /></div>
+          <div class="form-group">
+            <label>สถานะ</label>
+            <select id="s-status">
+              <option value="normal">ปกติ</option>
+              <option value="at-risk">ต้องติดตาม</option>
+              <option value="dropout-risk">เสี่ยงออก</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="form-section">
+        <h4>คะแนนและกิจกรรม</h4>
+        <div class="score-inputs">
+          <div class="score-item"><label>⭐ คะแนนจิตอาสา</label><input id="s-volunteer" type="number" min="0" max="100" placeholder="0" /></div>
+          <div class="score-item"><label>📚 หน่วยกิต</label><input id="s-credit" type="number" min="0" max="200" placeholder="0" /></div>
+          <div class="score-item"><label>📋 งานที่ยังไม่ส่ง (ชิ้น)</label><input id="s-pending" type="number" min="0" placeholder="0" /></div>
+          <div class="score-item"><label>🏆 คะแนนรวมสะสม</label><input id="s-total-score" type="number" min="0" placeholder="0" /></div>
+        </div>
+      </div>
+      <div class="form-section">
+        <h4>หมายเหตุ</h4>
+        <textarea id="s-note" rows="2" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-family:Sarabun,sans-serif;font-size:14px;resize:vertical;" placeholder="บันทึกเพิ่มเติมเกี่ยวกับนักเรียน..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">ยกเลิก</button>
+      <button class="btn btn-green" onclick="saveStudent()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- SCORE EDIT MODAL -->
+<div class="modal-overlay" id="score-modal">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <h3>✏️ แก้ไขคะแนน</h3>
+      <button class="btn-close" onclick="closeScoreModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="score-edit-index">
+      <div class="form-group"><label>ชื่อนักเรียน</label><input id="score-name-display" disabled style="background:#f0f4f0;" /></div>
+      <div class="score-inputs">
+        <div class="score-item"><label>⭐ จิตอาสา</label><input id="se-volunteer" type="number" /></div>
+        <div class="score-item"><label>📚 หน่วยกิต</label><input id="se-credit" type="number" /></div>
+        <div class="score-item"><label>📋 งานค้าง</label><input id="se-pending" type="number" /></div>
+        <div class="score-item"><label>🏆 คะแนนรวม</label><input id="se-total" type="number" /></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeScoreModal()">ยกเลิก</button>
+      <button class="btn btn-green" onclick="saveScoreEdit()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== DATA ====================
+let currentUser = null;
+let students = [];
+let activityLog = [];
+let pendingImportData = null;
+
+const COLORS = ['#1a5f3f','#2d8a5e','#f0a500','#457b9d','#e63946','#6a4c93','#2ec4b6'];
+
+async function loadStudentsFromSupabase() {
+  if (!currentUser?.id) return;
+
+  const { data, error } = await sb
+    .from('students')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error(error);
+    showAlert('โหลดข้อมูลนักเรียนไม่สำเร็จ', 'error');
+    return;
+  }
+
+  students = (data || []).map(row => ({
+    id: row.id,
+    teacher_id: row.teacher_id,
+    fname: row.first_name || '',
+    lname: row.last_name || '',
+    grade: row.class_level || '',
+    age: row.age ?? '',
+    address: row.address || '',
+    phone: row.parent_phone || '',
+    volunteer: Number(row.volunteer_score || 0),
+    credit: Number(row.credits || 0),
+    pendingWork: Number(row.missing_work || 0),
+    totalScore: Number(row.total_score || 0),
+    status: mapDbStatusToUi(row.status),
+    note: row.note || '',
+    createdAt: row.created_at || '',
+    updatedAt: row.updated_at || ''
+  }));
+
+  renderAll();
+}
+
+async function loadActivityFromSupabase() {
+  if (!currentUser?.id) return;
+
+  const { data, error } = await sb
+    .from('activity_logs')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(100);
+
+  if (error) {
+    console.error(error);
+    activityLog = [];
+    return;
+  }
+
+  activityLog = (data || []).map(row => ({
+    icon: activityIconFromAction(row.action),
+    title: row.action,
+    detail: row.detail || '',
+    time: new Date(row.created_at).toLocaleString('th-TH')
+  }));
+
+  renderActivity();
+}
+
+function mapUiStatusToDb(status) {
+  const m = {
+    normal: 'ปกติ',
+    'at-risk': 'ต้องติดตาม',
+    'dropout-risk': 'เสี่ยงออก'
+  };
+  return m[status] || 'ปกติ';
+}
+
+function mapDbStatusToUi(status) {
+  const s = String(status || '').trim();
+  if (s === 'ปกติ') return 'normal';
+  if (s === 'ต้องติดตาม') return 'at-risk';
+  if (s === 'เสี่ยงออก') return 'dropout-risk';
+  return 'normal';
+}
+
+function activityIconFromAction(action) {
+  const s = String(action || '');
+  if (s.includes('เข้าสู่ระบบ')) return '🔐';
+  if (s.includes('เพิ่มนักเรียน')) return '➕';
+  if (s.includes('แก้ไขนักเรียน')) return '✏️';
+  if (s.includes('ลบนักเรียน')) return '🗑️';
+  if (s.includes('อัพเดทคะแนน')) return '⭐';
+  if (s.includes('นำเข้า Excel')) return '📂';
+  if (s.includes('Export')) return '📥';
+  return '📝';
+}
+
+async function logActivityToSupabase(action, detail = '', icon = '📝') {
+  if (!currentUser?.id) return;
+
+  const { error } = await sb.from('activity_logs').insert({
+    teacher_id: currentUser.id,
+    action,
+    detail
+  });
+
+  if (error) {
+    console.error('logActivityToSupabase error:', error);
+    return;
+  }
+
+  await loadActivityFromSupabase();
+}
+
+async function clearActivityLog() {
+  if (!currentUser?.id) return;
+
+  const ok = confirm('ยืนยันล้างประวัติกิจกรรมทั้งหมด?');
+  if (!ok) return;
+
+  const { error } = await sb
+    .from('activity_logs')
+    .delete()
+    .eq('teacher_id', currentUser.id);
+
+  if (error) {
+    console.error(error);
+    return showAlert('ล้างประวัติไม่สำเร็จ', 'error');
+  }
+
+  activityLog = [];
+  renderActivity();
+  showAlert('ล้างประวัติเรียบร้อย', 'info');
+}
+
+
+// ==================== AUTH ====================
+function switchTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach((t, i) =>
+    t.classList.toggle('active', (tab === 'login' && i === 0) || (tab === 'register' && i === 1))
+  );
+  document.getElementById('tab-login').style.display = tab === 'login' ? 'block' : 'none';
+  document.getElementById('tab-register').style.display = tab === 'register' ? 'block' : 'none';
+}
+
+async function doRegister() {
+  try {
+    const fname = document.getElementById('reg-fname').value.trim();
+    const lname = document.getElementById('reg-lname').value.trim();
+    const email = document.getElementById('reg-email').value.trim();
+    const area = document.getElementById('reg-area').value.trim();
+    const pass = document.getElementById('reg-pass').value;
+
+    if (!fname || !lname || !email || !pass) {
+      return showAlert('กรุณากรอกข้อมูลให้ครบ', 'error');
+    }
+
+    if (pass.length < 6) {
+      return showAlert('รหัสผ่านอย่างน้อย 6 ตัวอักษร', 'error');
+    }
+
+    const { data, error } = await sb.auth.signUp({
+      email,
+      password: pass,
+      options: {
+        data: {
+          first_name: fname,
+          last_name: lname,
+          area: area || 'ไม่ระบุ'
+        }
+      }
+    });
+
+    if (error) {
+      console.error('signUp error:', error);
+      return showAlert(`สมัครสมาชิกไม่สำเร็จ: ${error.message}`, 'error');
+    }
+
+    showAlert('สมัครสมาชิกสำเร็จ กรุณาตรวจสอบอีเมลหรือเข้าสู่ระบบ', 'success');
+    switchTab('login');
+
+    document.getElementById('reg-fname').value = '';
+    document.getElementById('reg-lname').value = '';
+    document.getElementById('reg-email').value = '';
+    document.getElementById('reg-area').value = '';
+    document.getElementById('reg-pass').value = '';
+
+  } catch (err) {
+    console.error('doRegister crash:', err);
+    showAlert(`เกิดข้อผิดพลาด: ${err.message}`, 'error');
+  }
+}
+
+async function doLogin() {
+  try {
+    const email = document.getElementById('login-email').value.trim();
+    const pass = document.getElementById('login-pass').value;
+
+    if (!email || !pass) {
+      return showAlert('กรุณากรอกข้อมูลให้ครบ', 'error');
+    }
+
+    const { data, error } = await sb.auth.signInWithPassword({
+      email,
+      password: pass
+    });
+
+    if (error) {
+      console.error('login error:', error);
+      return showAlert(`เข้าสู่ระบบไม่สำเร็จ: ${error.message}`, 'error');
+    }
+
+    if (!data?.user) {
+      return showAlert('ไม่พบข้อมูลผู้ใช้หลังเข้าสู่ระบบ', 'error');
+    }
+
+    await loginSuccess();
+  } catch (err) {
+    console.error('doLogin crash:', err);
+    showAlert(`เกิดข้อผิดพลาดระหว่างเข้าสู่ระบบ: ${err.message}`, 'error');
+  }
+}
+
+async function getCurrentProfile() {
+  const { data: authData, error: authError } = await sb.auth.getUser();
+
+  if (authError || !authData?.user) {
+    return null;
+  }
+
+  const user = authData.user;
+
+  const { data: profile, error: profileError } = await sb
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError) {
+    console.error(profileError);
+    currentUser = {
+      id: user.id,
+      email: user.email,
+      fname: '',
+      lname: '',
+      name: user.email,
+      area: 'ครูที่ปรึกษา'
+    };
+    return currentUser;
+  }
+
+  currentUser = {
+    id: user.id,
+    email: user.email,
+    fname: profile.first_name || '',
+    lname: profile.last_name || '',
+    name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || user.email,
+    area: profile.area || 'ครูที่ปรึกษา'
+  };
+
+  return currentUser;
+}
+
+async function loginSuccess() {
+  try {
+    await getCurrentProfile();
+
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+
+    document.getElementById('teacher-name-display').textContent =
+      currentUser?.name || currentUser?.email || 'ผู้ใช้งาน';
+    document.getElementById('teacher-area-display').textContent =
+      currentUser?.area || 'ครูที่ปรึกษา';
+    document.getElementById('teacher-avatar-txt').textContent =
+      (currentUser?.fname || currentUser?.name || 'K')[0];
+    document.getElementById('dash-welcome').textContent =
+      `ยินดีต้อนรับ, ${currentUser?.fname || currentUser?.name || currentUser?.email || 'ผู้ใช้งาน'} 👋`;
+
+    students = [];
+    activityLog = [];
+    renderAll();
+
+    try {
+      await loadStudentsFromSupabase();
+    } catch (err) {
+      console.error('loadStudentsFromSupabase error:', err);
+    }
+
+    try {
+      await loadActivityFromSupabase();
+    } catch (err) {
+      console.error('loadActivityFromSupabase error:', err);
+    }
+
+    try {
+      await logActivityToSupabase('เข้าสู่ระบบ', `${currentUser?.name || currentUser?.email} เข้าสู่ระบบเรียบร้อย`, '🔐');
+    } catch (err) {
+      console.error('logActivityToSupabase error:', err);
+    }
+  } catch (err) {
+    console.error('loginSuccess crash:', err);
+    showAlert(`ล็อกอินสำเร็จ แต่เปิดหน้าแอปไม่สำเร็จ: ${err.message}`, 'error');
+  }
+}
+
+async function doLogout() {
+  await sb.auth.signOut();
+
+  currentUser = null;
+  students = [];
+  activityLog = [];
+
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('login-email').value = '';
+  document.getElementById('login-pass').value = '';
+}
+
+async function initAuth() {
+  const { data } = await sb.auth.getSession();
+
+  if (data?.session) {
+    await loginSuccess();
+  } else {
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('auth-screen').style.display = 'flex';
+  }
+
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session) {
+      await loginSuccess();
+    }
+
+    if (event === 'SIGNED_OUT') {
+      currentUser = null;
+      students = [];
+      activityLog = [];
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('auth-screen').style.display = 'flex';
+    }
+  });
+}
+
+// ==================== NAVIGATION ====================
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if(name==='scores') renderScorePage();
+  if(name==='pending') renderPending();
+  if(name==='activity') renderActivity();
+  if(name==='report') renderReport();
+  if(name==='dashboard') renderDashboard();
+  if(name==='students') renderStudents();
+}
+
+// ==================== RENDER ====================
+function renderAll() { renderDashboard(); renderStudents(); updatePendingBadge(); }
+
+const statusMap = {normal:{label:'ปกติ',cls:'badge-green'},  'at-risk':{label:'ต้องติดตาม',cls:'badge-amber'}, 'dropout-risk':{label:'เสี่ยงออก',cls:'badge-red'}};
+const avatarColors = ['#1a5f3f','#f0a500','#457b9d','#e63946','#6a4c93','#2ec4b6','#e07b39'];
+
+function renderStudents() {
+  const q = (document.getElementById('search-input').value||'').toLowerCase();
+  const gradeF = document.getElementById('filter-grade').value;
+  let filtered = students.filter(s=>{
+    const match = `${s.fname} ${s.lname} ${s.address||''}`.toLowerCase().includes(q);
+    const gMatch = !gradeF || s.grade===gradeF;
+    return match && gMatch;
+  });
+  document.getElementById('students-count-txt').textContent = `ทั้งหมด ${students.length} คน (แสดง ${filtered.length})`;
+  const tbody = document.getElementById('students-tbody');
+  if(!filtered.length) { tbody.innerHTML=`<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">👨‍🎓</div><p>ไม่พบข้อมูลนักเรียน</p></div></td></tr>`; return; }
+  tbody.innerHTML = filtered.map((s,i)=>{
+    const realIdx = students.indexOf(s);
+    const color = avatarColors[realIdx%avatarColors.length];
+    const initials = (s.fname||'?')[0]+(s.lname||'?')[0];
+    const vScore = Number(s.volunteer)||0;
+    const fillCls = vScore>=70?'good':vScore>=40?'ok':'low';
+    const st = statusMap[s.status||'normal'];
+    const pendNum = Number(s.pendingWork)||0;
+    return `<tr>
+      <td>${i+1}</td>
+      <td><div class="avatar-cell"><div class="mini-avatar" style="background:${color};color:white;">${initials}</div>${s.fname} ${s.lname}</div></td>
+      <td><span class="badge badge-blue">${s.grade||'-'}</span></td>
+      <td>${s.age||'-'}</td>
+      <td><div class="score-bar"><div class="score-track"><div class="score-fill ${fillCls}" style="width:${Math.min(vScore,100)}%"></div></div><small>${vScore}</small></div></td>
+      <td>${s.credit||0}</td>
+      <td>${pendNum>0?`<span class="badge badge-red">${pendNum} ชิ้น</span>`:`<span class="badge badge-green">ส่งครบ</span>`}</td>
+      <td><span class="badge ${st.cls}">${st.label}</span></td>
+      <td><button class="btn btn-sm btn-outline" onclick="openEditModal(${realIdx})">✏️</button> <button class="btn btn-sm btn-danger" onclick="deleteStudent(${realIdx})">🗑️</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderDashboard() {
+  const total = students.length;
+  const avgV = total ? Math.round(students.reduce((a,s)=>a+Number(s.volunteer||0),0)/total) : 0;
+  const avgC = total ? Math.round(students.reduce((a,s)=>a+Number(s.credit||0),0)/total) : 0;
+  const pend = students.filter(s=>Number(s.pendingWork||0)>0).length;
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-volunteer').textContent = avgV;
+  document.getElementById('stat-credit').textContent = avgC;
+  document.getElementById('stat-pending').textContent = pend;
+
+  // Grade chart
+  const grades = {};
+  students.forEach(s=>{ if(s.grade) grades[s.grade]=(grades[s.grade]||0)+1; });
+  const gradeArea = document.getElementById('grade-chart-area');
+  if(!Object.keys(grades).length) {
+    gradeArea.innerHTML='<div class="chart-container"><p style="color:var(--text-muted)">ยังไม่มีข้อมูล</p></div>'; 
+  } else {
+    const max = Math.max(...Object.values(grades));
+    gradeArea.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;padding:4px;">
+      ${Object.entries(grades).sort().map(([g,c],i)=>`
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="width:40px;font-size:13px;font-weight:600;color:var(--text-muted);text-align:right;">${g}</span>
+          <div style="flex:1;background:#f0f4f0;border-radius:6px;height:28px;overflow:hidden;">
+            <div style="height:100%;border-radius:6px;background:linear-gradient(90deg,var(--primary),var(--primary-light));width:${(c/max*100)}%;min-width:40px;transition:.6s;display:flex;align-items:center;padding:0 10px;">
+              <span style="color:white;font-size:12px;font-weight:700;">${c} คน</span>
+            </div>
+          </div>
+        </div>`).join('')}
+    </div>`;
+  }
+
+  // Alerts
+  const alertBox = document.getElementById('alert-list');
+  const alerts = [];
+  if(pend>0) alerts.push({icon:'⚠️',bg:'#fff8e6',title:`มีนักเรียนงานค้าง ${pend} คน`,sub:'คลิกที่เมนูงานค้างส่งเพื่อดูรายละเอียด'});
+  const dropout = students.filter(s=>s.status==='dropout-risk').length;
+  if(dropout>0) alerts.push({icon:'🚨',bg:'#fce8ea',title:`นักเรียนเสี่ยงออก ${dropout} คน`,sub:'ต้องการการดูแลเป็นพิเศษ'});
+  alertBox.innerHTML = alerts.length
+    ? alerts.map(a=>`<div style="display:flex;gap:10px;padding:12px;background:${a.bg};border-radius:10px;margin-bottom:8px;"><span style="font-size:20px;">${a.icon}</span><div><div style="font-weight:600;font-size:14px;">${a.title}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${a.sub}</div></div></div>`).join('')
+    : '<div class="empty-state"><div class="empty-icon">✅</div><p>ทุกอย่างเรียบร้อยดี</p></div>';
+}
+
+function renderScorePage() {
+  const sortBy = document.getElementById('score-sort').value;
+  let sorted = [...students].sort((a,b)=>{
+    if(sortBy==='volunteer') return Number(b.volunteer||0)-Number(a.volunteer||0);
+    if(sortBy==='credit') return Number(b.credit||0)-Number(a.credit||0);
+    return Number(b.pendingWork||0)-Number(a.pendingWork||0);
+  });
+  const tbody = document.getElementById('scores-tbody');
+  if(!sorted.length) { tbody.innerHTML=`<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">⭐</div><p>ยังไม่มีข้อมูล</p></div></td></tr>`; return; }
+  tbody.innerHTML = sorted.map((s,i)=>{
+    const realIdx = students.indexOf(s);
+    const vScore = Number(s.volunteer||0);
+    const fillCls = vScore>=70?'good':vScore>=40?'ok':'low';
+    const pendNum = Number(s.pendingWork||0);
+    return `<tr>
+      <td>${i+1}</td>
+      <td>${s.fname} ${s.lname}</td>
+      <td><span class="badge badge-blue">${s.grade||'-'}</span></td>
+      <td><div class="score-bar"><div class="score-track"><div class="score-fill ${fillCls}" style="width:${Math.min(vScore,100)}%"></div></div><strong>${vScore}</strong></div></td>
+      <td>${s.credit||0}</td>
+      <td>${pendNum>0?`<span class="badge badge-red">${pendNum}</span>`:'<span class="badge badge-green">0</span>'}</td>
+      <td><button class="btn btn-sm btn-outline" onclick="openScoreModal(${realIdx})">✏️ แก้ไข</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderPending() {
+  const pList = students.filter(s=>Number(s.pendingWork||0)>0).sort((a,b)=>Number(b.pendingWork)-Number(a.pendingWork));
+  const tbody = document.getElementById('pending-tbody');
+  updatePendingBadge();
+  if(!pList.length) { tbody.innerHTML=`<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">✅</div><p>ไม่มีงานค้างส่ง</p></div></td></tr>`; return; }
+  tbody.innerHTML = pList.map((s,i)=>`<tr>
+    <td>${i+1}</td>
+    <td>${s.fname} ${s.lname}</td>
+    <td><span class="badge badge-blue">${s.grade||'-'}</span></td>
+    <td><span class="badge badge-red">${s.pendingWork} ชิ้น</span></td>
+    <td>${Number(s.pendingWork)>=3?'<span class="badge badge-red">⚠️ ด่วน</span>':'<span class="badge badge-amber">ติดตาม</span>'}</td>
+  </tr>`).join('');
+}
+
+function updatePendingBadge() {
+  const n = students.filter(s=>Number(s.pendingWork||0)>0).length;
+  document.getElementById('pending-count-badge').textContent = n;
+  document.getElementById('pending-count-badge').style.display = n>0?'flex':'none';
+}
+
+function renderActivity() {
+  const con = document.getElementById('activity-container');
+  if(!activityLog.length) { con.innerHTML='<div class="empty-state"><div class="empty-icon">📂</div><p>ยังไม่มีประวัติ</p></div>'; return; }
+  con.innerHTML = `<div class="activity-list">${[...activityLog].reverse().map(a=>`
+    <div class="activity-item">
+      <div class="activity-dot" style="background:#f0f4f0;">${a.icon}</div>
+      <div class="activity-content">
+        <div class="title">${a.title}</div>
+        <div class="sub">${a.detail} · ${a.time}</div>
+      </div>
+    </div>`).join('')}</div>`;
+}
+
+function renderReport() {
+  const total = students.length;
+  const avgV = total ? Math.round(students.reduce((a,s)=>a+Number(s.volunteer||0),0)/total) : 0;
+  const avgC = total ? Math.round(students.reduce((a,s)=>a+Number(s.credit||0),0)/total) : 0;
+  const pend = students.filter(s=>Number(s.pendingWork||0)>0).length;
+  document.getElementById('report-stats').innerHTML = `
+    <div class="stat-card green"><div class="stat-icon">👨‍🎓</div><div><div class="stat-value">${total}</div><div class="stat-label">นักเรียนทั้งหมด</div></div></div>
+    <div class="stat-card amber"><div class="stat-icon">⭐</div><div><div class="stat-value">${avgV}</div><div class="stat-label">จิตอาสาเฉลี่ย</div></div></div>
+    <div class="stat-card blue"><div class="stat-icon">📚</div><div><div class="stat-value">${avgC}</div><div class="stat-label">หน่วยกิตเฉลี่ย</div></div></div>
+    <div class="stat-card red"><div class="stat-icon">⚠️</div><div><div class="stat-value">${pend}</div><div class="stat-label">มีงานค้าง</div></div></div>`;
+  const grades = {};
+  students.forEach(s=>{
+    if(!s.grade) return;
+    if(!grades[s.grade]) grades[s.grade]={count:0,v:0,c:0,p:0};
+    grades[s.grade].count++;
+    grades[s.grade].v+=Number(s.volunteer||0);
+    grades[s.grade].c+=Number(s.credit||0);
+    grades[s.grade].p+=Number(s.pendingWork||0);
+  });
+  const tbody = document.getElementById('report-tbody');
+  const entries = Object.entries(grades).sort();
+  if(!entries.length) { tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-muted);">ยังไม่มีข้อมูล</td></tr>`; return; }
+  tbody.innerHTML = entries.map(([g,d])=>`<tr>
+    <td><span class="badge badge-blue">${g}</span></td>
+    <td>${d.count} คน</td>
+    <td>${Math.round(d.v/d.count)}</td>
+    <td>${Math.round(d.c/d.count)}</td>
+    <td>${d.p>0?`<span class="badge badge-red">${d.p} ชิ้น</span>`:'<span class="badge badge-green">ไม่มี</span>'}</td>
+  </tr>`).join('');
+}
+
+// ==================== STUDENT CRUD ====================
+function openAddModal() {
+  document.getElementById('modal-title').textContent = '➕ เพิ่มข้อมูลนักเรียน';
+  document.getElementById('edit-index').value = -1;
+  document.getElementById('s-fname').value = '';
+  document.getElementById('s-lname').value = '';
+  document.getElementById('s-grade').value = '';
+  document.getElementById('s-age').value = '';
+  document.getElementById('s-address').value = '';
+  document.getElementById('s-phone').value = '';
+  document.getElementById('s-volunteer').value = 0;
+  document.getElementById('s-credit').value = 0;
+  document.getElementById('s-pending').value = 0;
+  document.getElementById('s-total-score').value = 0;
+  document.getElementById('s-status').value = 'normal';
+  document.getElementById('s-note').value = '';
+  document.getElementById('student-modal').classList.add('open');
+}
+
+function openEditModal(idx) {
+  const s = students[idx];
+  if (!s) return;
+
+  document.getElementById('modal-title').textContent = '✏️ แก้ไขข้อมูลนักเรียน';
+  document.getElementById('edit-index').value = idx;
+  document.getElementById('s-fname').value = s.fname || '';
+  document.getElementById('s-lname').value = s.lname || '';
+  document.getElementById('s-grade').value = s.grade || '';
+  document.getElementById('s-age').value = s.age || '';
+  document.getElementById('s-address').value = s.address || '';
+  document.getElementById('s-phone').value = s.phone || '';
+  document.getElementById('s-volunteer').value = s.volunteer || 0;
+  document.getElementById('s-credit').value = s.credit || 0;
+  document.getElementById('s-pending').value = s.pendingWork || 0;
+  document.getElementById('s-total-score').value = s.totalScore || 0;
+  document.getElementById('s-status').value = s.status || 'normal';
+  document.getElementById('s-note').value = s.note || '';
+  document.getElementById('student-modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('student-modal').classList.remove('open');
+}
+
+async function saveStudent() {
+  const fname = document.getElementById('s-fname').value.trim();
+  const lname = document.getElementById('s-lname').value.trim();
+  const grade = document.getElementById('s-grade').value;
+
+  if (!fname || !lname) return showAlert('กรุณากรอกชื่อและนามสกุล', 'error');
+  if (!grade) return showAlert('กรุณาเลือกชั้นเรียน', 'error');
+  if (!currentUser?.id) return showAlert('กรุณาเข้าสู่ระบบใหม่', 'error');
+
+  const payload = {
+    teacher_id: currentUser.id,
+    first_name: fname,
+    last_name: lname,
+    class_level: grade,
+    age: document.getElementById('s-age').value ? Number(document.getElementById('s-age').value) : null,
+    address: document.getElementById('s-address').value.trim() || null,
+    parent_phone: document.getElementById('s-phone').value.trim() || null,
+    volunteer_score: Number(document.getElementById('s-volunteer').value || 0),
+    credits: Number(document.getElementById('s-credit').value || 0),
+    missing_work: Number(document.getElementById('s-pending').value || 0),
+    total_score: Number(document.getElementById('s-total-score').value || 0),
+    status: mapUiStatusToDb(document.getElementById('s-status').value),
+    note: document.getElementById('s-note').value.trim() || null,
+    updated_at: new Date().toISOString()
+  };
+
+  const idx = parseInt(document.getElementById('edit-index').value, 10);
+
+  if (idx < 0) {
+    const { error } = await sb.from('students').insert(payload);
+
+    if (error) {
+      console.error(error);
+      return showAlert('เพิ่มนักเรียนไม่สำเร็จ', 'error');
+    }
+
+    await logActivityToSupabase('เพิ่มนักเรียน', `${fname} ${lname} (${grade})`, '➕');
+    showAlert('เพิ่มนักเรียนสำเร็จ', 'success');
+  } else {
+    const studentId = students[idx]?.id;
+    if (!studentId) return showAlert('ไม่พบรหัสนักเรียนสำหรับแก้ไข', 'error');
+
+    const { error } = await sb
+      .from('students')
+      .update(payload)
+      .eq('id', studentId);
+
+    if (error) {
+      console.error(error);
+      return showAlert('บันทึกการแก้ไขไม่สำเร็จ', 'error');
+    }
+
+    await logActivityToSupabase('แก้ไขนักเรียน', `${fname} ${lname}`, '✏️');
+    showAlert('บันทึกการแก้ไขสำเร็จ', 'success');
+  }
+
+  closeModal();
+  await loadStudentsFromSupabase();
+}
+
+async function deleteStudent(idx) {
+  const s = students[idx];
+  if (!s) return;
+  if (!confirm(`ยืนยันลบ "${s.fname} ${s.lname}"?`)) return;
+
+  const { error } = await sb
+    .from('students')
+    .delete()
+    .eq('id', s.id);
+
+  if (error) {
+    console.error(error);
+    return showAlert('ลบนักเรียนไม่สำเร็จ', 'error');
+  }
+
+  await logActivityToSupabase('ลบนักเรียน', `${s.fname} ${s.lname}`, '🗑️');
+  showAlert('ลบนักเรียนเรียบร้อย', 'info');
+  await loadStudentsFromSupabase();
+}
+
+// ==================== SCORE MODAL ====================
+function openScoreModal(idx) {
+  const s = students[idx];
+  if (!s) return;
+
+  document.getElementById('score-edit-index').value = idx;
+  document.getElementById('score-name-display').value = `${s.fname} ${s.lname}`;
+  document.getElementById('se-volunteer').value = s.volunteer || 0;
+  document.getElementById('se-credit').value = s.credit || 0;
+  document.getElementById('se-pending').value = s.pendingWork || 0;
+  document.getElementById('se-total').value = s.totalScore || 0;
+  document.getElementById('score-modal').classList.add('open');
+}
+
+function closeScoreModal() {
+  document.getElementById('score-modal').classList.remove('open');
+}
+
+async function saveScoreEdit() {
+  const idx = parseInt(document.getElementById('score-edit-index').value, 10);
+  const s = students[idx];
+  if (!s?.id) return showAlert('ไม่พบข้อมูลนักเรียน', 'error');
+
+  const updates = {
+    volunteer_score: Number(document.getElementById('se-volunteer').value || 0),
+    credits: Number(document.getElementById('se-credit').value || 0),
+    missing_work: Number(document.getElementById('se-pending').value || 0),
+    total_score: Number(document.getElementById('se-total').value || 0),
+    updated_at: new Date().toISOString()
+  };
+
+  const { error } = await sb
+    .from('students')
+    .update(updates)
+    .eq('id', s.id);
+
+  if (error) {
+    console.error(error);
+    return showAlert('บันทึกคะแนนไม่สำเร็จ', 'error');
+  }
+
+  await logActivityToSupabase('อัพเดทคะแนน', `${s.fname} ${s.lname}`, '⭐');
+  closeScoreModal();
+  await loadStudentsFromSupabase();
+  showAlert('บันทึกคะแนนสำเร็จ', 'success');
+}
+
+// ==================== EXCEL ====================
+function handleExcelImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'binary' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(ws);
+
+      if (!data.length) return showAlert('ไม่พบข้อมูลในไฟล์', 'error');
+
+      pendingImportData = data.map(row => ({
+        fname: row['ชื่อ'] || row['fname'] || '',
+        lname: row['นามสกุล'] || row['lname'] || '',
+        grade: row['ชั้น'] || row['grade'] || '',
+        age: row['อายุ'] || row['age'] || '',
+        address: row['ที่อยู่'] || row['address'] || '',
+        phone: row['เบอร์ผู้ปกครอง'] || row['phone'] || '',
+        volunteer: Number(row['จิตอาสา'] || row['volunteer'] || 0),
+        credit: Number(row['หน่วยกิต'] || row['credit'] || 0),
+        pendingWork: Number(row['งานค้าง'] || row['pendingWork'] || 0),
+        totalScore: Number(row['คะแนนรวม'] || row['totalScore'] || 0),
+        status: row['สถานะ'] || row['status'] || 'normal',
+        note: row['หมายเหตุ'] || row['note'] || ''
+      }));
+
+      showImportPreview();
+    } catch (err) {
+      console.error(err);
+      showAlert('ไม่สามารถอ่านไฟล์ได้', 'error');
+    }
+  };
+
+  reader.readAsBinaryString(file);
+  event.target.value = '';
+}
+
+function showImportPreview() {
+  const preview = document.getElementById('import-preview');
+  const content = document.getElementById('import-preview-content');
+  preview.style.display = 'block';
+  const sample = pendingImportData.slice(0, 5);
+  content.innerHTML = `<p style="color:var(--text-muted);font-size:13px;margin-bottom:10px;">พบข้อมูลทั้งหมด ${pendingImportData.length} รายการ (แสดงตัวอย่าง 5 รายการแรก)</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>ชื่อ</th><th>นามสกุล</th><th>ชั้น</th><th>อายุ</th><th>จิตอาสา</th><th>หน่วยกิต</th></tr></thead>
+    <tbody>${sample.map(s=>`<tr><td>${s.fname}</td><td>${s.lname}</td><td>${s.grade}</td><td>${s.age}</td><td>${s.volunteer}</td><td>${s.credit}</td></tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+async function confirmImport() {
+  if (!pendingImportData?.length) return;
+  if (!currentUser?.id) return showAlert('กรุณาเข้าสู่ระบบใหม่', 'error');
+
+  const rows = pendingImportData
+    .filter(s => s.fname && s.lname && s.grade)
+    .map(s => ({
+      teacher_id: currentUser.id,
+      first_name: s.fname,
+      last_name: s.lname,
+      class_level: s.grade,
+      age: s.age ? Number(s.age) : null,
+      address: s.address || null,
+      parent_phone: s.phone || null,
+      volunteer_score: Number(s.volunteer || 0),
+      credits: Number(s.credit || 0),
+      missing_work: Number(s.pendingWork || 0),
+      total_score: Number(s.totalScore || 0),
+      status: mapUiStatusToDb(s.status),
+      note: s.note || null,
+      updated_at: new Date().toISOString()
+    }));
+
+  if (!rows.length) {
+    return showAlert('ไม่มีข้อมูลที่นำเข้าได้', 'error');
+  }
+
+  const { error } = await sb.from('students').insert(rows);
+
+  if (error) {
+    console.error(error);
+    return showAlert('นำเข้าข้อมูลไม่สำเร็จ', 'error');
+  }
+
+  await logActivityToSupabase('นำเข้า Excel', `นำเข้านักเรียน ${rows.length} คน`, '📂');
+  pendingImportData = null;
+  document.getElementById('import-preview').style.display = 'none';
+  await loadStudentsFromSupabase();
+  showAlert(`นำเข้าข้อมูลสำเร็จ ${rows.length} รายการ`, 'success');
+}
+
+function cancelImport() { pendingImportData=null; document.getElementById('import-preview').style.display='none'; }
+
+function exportExcel() {
+  if(!students.length) return showAlert('ไม่มีข้อมูลในการ Export','error');
+  const data = students.map((s,i)=>({
+    'ลำดับ':i+1,'ชื่อ':s.fname,'นามสกุล':s.lname,'ชั้น':s.grade,'อายุ':s.age,
+    'ที่อยู่':s.address,'เบอร์โทร':s.phone,'คะแนนจิตอาสา':s.volunteer,'หน่วยกิต':s.credit,
+    'งานค้างส่ง':s.pendingWork,'คะแนนรวม':s.totalScore,
+    'สถานะ':statusMap[s.status||'normal'].label,'หมายเหตุ':s.note||''
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'นักเรียน');
+  XLSX.writeFile(wb, `EduTrack_Students_${new Date().toLocaleDateString('th')}.xlsx`);
+  addLog('📥','Export Excel',`ส่งออกข้อมูลนักเรียน ${students.length} คน`);
+  showAlert('Export Excel สำเร็จ','success');
+}
+
+function exportReport() {
+  if(!students.length) return showAlert('ไม่มีข้อมูล','error');
+  const grades = {};
+  students.forEach(s=>{
+    if(!s.grade) return;
+    if(!grades[s.grade]) grades[s.grade]={count:0,v:0,c:0,p:0};
+    grades[s.grade].count++;
+    grades[s.grade].v+=Number(s.volunteer||0);
+    grades[s.grade].c+=Number(s.credit||0);
+    grades[s.grade].p+=Number(s.pendingWork||0);
+  });
+  const data = Object.entries(grades).sort().map(([g,d])=>({'ชั้น':g,'จำนวนนักเรียน':d.count,'จิตอาสาเฉลี่ย':Math.round(d.v/d.count),'หน่วยกิตเฉลี่ย':Math.round(d.c/d.count),'งานค้างรวม':d.p}));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'รายงาน');
+  XLSX.writeFile(wb, `EduTrack_Report_${new Date().toLocaleDateString('th')}.xlsx`);
+  showAlert('Export รายงานสำเร็จ','success');
+}
+
+// ==================== HELPERS ====================
+function addLog(icon, title, detail) {
+  activityLog.push({ icon, title, detail, time: new Date().toLocaleString('th-TH') });
+  if (activityLog.length > 100) activityLog.shift();
+  renderActivity();
+  if (currentUser?.id) {
+    logActivityToSupabase(title, detail, icon);
+  }
+}
+
+
+let alertTimer;
+function showAlert(msg,type='success') {
+  document.querySelectorAll('.alert').forEach(a=>a.remove());
+  const div = document.createElement('div');
+  div.className = `alert ${type}`;
+  const icons = {success:'✅',error:'❌',info:'ℹ️'};
+  div.innerHTML = `<span>${icons[type]||'ℹ️'}</span><span>${msg}</span>`;
+  document.body.appendChild(div);
+  clearTimeout(alertTimer);
+  alertTimer = setTimeout(()=>div.remove(), 3000);
+}
+
+// Close modals on outside click
+document.querySelectorAll('.modal-overlay').forEach(m=>{
+  m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('open'); });
+});
+</script>
+</body>
+</html>
